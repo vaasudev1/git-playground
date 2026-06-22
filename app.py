@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask,abort
 from flask import request
 from flask import redirect
 from converter import convert
@@ -27,14 +27,7 @@ def home():
         <input type="text" name="url">
         <input type="submit" value="Shorten">
     </form>
-    
-    <h2>Redirect</h2>
-   
-    <form action="/redirect" method="post">
-        <input type="text" name="short">
-        <input type="submit" value="Redirect">
-        </form>
-    """
+     """
    
 
 @app.route("/shorten", methods=["POST"])
@@ -46,7 +39,7 @@ def shorten():
 
     count = "".join(convert(counter,62))
 
-    sig = signature("my_secret_key", url)
+    sig = signature("my_secret_key", count)
 
     sig62 = "".join(convert(sig,62))
 
@@ -75,14 +68,18 @@ def shorten():
 
     db.commit()
 
-    return short
+    return request.host_url + short
 
-@app.route("/redirect", methods=["POST"])
-def redir():
-    short = request.form["short"]
+@app.route('/<short>',strict_slashes=False)
+def redir(short):
+    m = short.split(".")
+    if("".join(convert(signature("my_secret_key",m[0]),62))!=m[1]):
+        abort(404)
     if short in urls:
         return redirect(urls[short])
-    return "URL not found"
+    abort(404)
 
-if __name__ == "__main__":
-    app.run(debug=True)
+
+if __name__ == '__main__':
+    # use_reloader=False stops Flask from restarting when files change
+    app.run(debug=True, use_reloader=False)
